@@ -19,6 +19,7 @@ export type FeatureFlags = {
   Litecoin: boolean
   IdleFinance: boolean
   BitcoinCash: boolean
+  Axelar: boolean
 }
 
 export type Flag = keyof FeatureFlags
@@ -49,6 +50,7 @@ const initialState: Preferences = {
     Litecoin: getConfig().REACT_APP_FEATURE_LITECOIN,
     IdleFinance: getConfig().REACT_APP_FEATURE_IDLE,
     BitcoinCash: getConfig().REACT_APP_FEATURE_BITCOINCASH,
+    Axelar: getConfig().REACT_APP_FEATURE_AXELAR,
   },
   selectedLocale: simpleLocale(),
   balanceThreshold: '0',

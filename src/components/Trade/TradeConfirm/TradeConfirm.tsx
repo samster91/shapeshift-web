@@ -1,6 +1,6 @@
 import { WarningTwoIcon } from '@chakra-ui/icons'
 import { Box, Button, Divider, Flex, Link, Stack } from '@chakra-ui/react'
-import { CHAIN_NAMESPACE, fromChainId, osmosisAssetId } from '@shapeshiftoss/caip'
+import { osmosisAssetId } from '@shapeshiftoss/caip'
 import { TradeTxs } from '@shapeshiftoss/swapper'
 import { KnownChainIds } from '@shapeshiftoss/types'
 import { TxStatus } from '@shapeshiftoss/unchained-client'
@@ -88,15 +88,26 @@ export const TradeConfirm = ({ history }: RouterProps) => {
       // Poll until we have a "buy" txid
       // This means the trade is just about finished
       const txs = await poll({
-        fn: () => getTradeTxs(result),
-        validate: (txs: TradeTxs) => !!txs.buyTxid,
+        fn: async () => {
+          try {
+            return { ...(await getTradeTxs(result)) }
+          } catch (e) {
+            return { sellTxid: '', buyTxid: '', e }
+          }
+        },
+        validate: (txs: TradeTxs & { e: Error }) => !!txs.buyTxid || !!txs.e,
         interval: 10000, // 10 seconds
         maxAttempts: 300, // Lots of attempts because some trade are slow (thorchain to bitcoin)
       })
-      if (!txs.buyTxid) throw new Error('No buyTxid from getTradeTxs')
-      setTxid(txs.buyTxid)
+
+      if (txs.e) throw txs.e
+      if (!txs?.sellTxid) throw new Error('No sellTxid from getTradeTxs')
+      setTxid(txs.sellTxid)
     } catch (e) {
       showErrorToast(e)
+      reset()
+      setTxid('')
+      history.push(TradeRoutePaths.Input)
     }
   }
 
@@ -130,7 +141,7 @@ export const TradeConfirm = ({ history }: RouterProps) => {
     gasFeeToTradeRatioPercentage > gasFeeToTradeRatioPercentageThreshold
 
   const txLink = useMemo(() => {
-    if (fromChainId(trade.sellAsset.chainId).chainNamespace === CHAIN_NAMESPACE.Cosmos) {
+    if (trade.sources[0].name === 'Osmosis') {
       return `${osmosisAsset?.explorerTxLink}${txid}`
     } else {
       return `${trade.sellAsset?.explorerTxLink}${txid}`

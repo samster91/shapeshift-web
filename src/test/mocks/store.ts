@@ -60,6 +60,7 @@ export const mockStore: ReduxState = {
       Litecoin: false,
       IdleFinance: false,
       BitcoinCash: false,
+      Axelar: false,
     },
     selectedLocale: 'en',
     balanceThreshold: '0',
