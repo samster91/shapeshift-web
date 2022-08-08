@@ -1,7 +1,7 @@
 import { ArrowDownIcon, ArrowUpIcon } from '@chakra-ui/icons'
 import { Center, useToast } from '@chakra-ui/react'
 import { toAssetId } from '@shapeshiftoss/caip'
-import { IdleOpportunity } from '@shapeshiftoss/investor-idle'
+import { ClaimableToken, IdleOpportunity } from '@shapeshiftoss/investor-idle'
 import { Overview } from 'features/defi/components/Overview/Overview'
 import {
   DefiAction,
@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useTranslate } from 'react-polyglot'
 import { CircularProgress } from 'components/CircularProgress/CircularProgress'
 import { useBrowserRouter } from 'hooks/useBrowserRouter/useBrowserRouter'
+import { useWalletAddress } from 'hooks/useWalletAddress/useWalletAddress'
 import { bnOrZero } from 'lib/bignumber/bignumber'
 import { useGetAssetDescriptionQuery } from 'state/slices/assetsSlice/assetsSlice'
 import {
@@ -29,6 +30,7 @@ export const IdleOverview = () => {
   const toast = useToast()
   const { query } = useBrowserRouter<DefiQueryParams, DefiParams>()
   const [opportunity, setOpportunity] = useState<IdleOpportunity | null>(null)
+  const [claimableTokens, setClaimableTokens] = useState<ClaimableToken[]>([])
   const { chainId, contractAddress: vaultAddress, assetReference } = query
 
   const assetNamespace = 'erc20'
@@ -52,6 +54,8 @@ export const IdleOverview = () => {
   const selectedLocale = useAppSelector(selectSelectedLocale)
   const descriptionQuery = useGetAssetDescriptionQuery({ assetId, selectedLocale })
 
+  const walletAddress = useWalletAddress('0x0000000000000000000000000000000000000000')
+
   useEffect(() => {
     ;(async () => {
       try {
@@ -70,12 +74,34 @@ export const IdleOverview = () => {
           })
         }
         setOpportunity(opportunity)
+
+        const claimableTokens = await opportunity.getClaimableTokens(walletAddress)
+        setClaimableTokens(claimableTokens)
       } catch (error) {
         // TODO: handle client side errors
-        console.error('IdleDeposit error:', error)
+        console.error('IdleOverview error:', error)
       }
     })()
-  }, [api, vaultAddress, chainId, toast, translate])
+  }, [api, vaultAddress, chainId, toast, translate, walletAddress])
+
+  const additionalParams: Record<string, any> = {}
+
+  useAppSelector(selectorState => {
+    if (claimableTokens && claimableTokens.length > 0) {
+      let rewardAssets: any[] = []
+      claimableTokens.forEach(token => {
+        const rewardAsset = selectAssetById(selectorState, token.assetId)
+        if (rewardAsset) {
+          rewardAssets.push({
+            ...rewardAsset,
+            cryptoBalance: bnOrZero(token.amount).div(`1e+${asset.precision}`).toPrecision(),
+          })
+        }
+      })
+
+      additionalParams.rewardAssets = rewardAssets
+    }
+  })
 
   if (!opportunity) {
     return (
@@ -127,6 +153,7 @@ export const IdleOverview = () => {
       tvl={opportunity.tvl.balanceUsdc.toFixed(2)}
       apy={opportunity.apy.toString()}
       menu={menu}
+      {...additionalParams}
     />
   )
 }

@@ -54,6 +54,7 @@ export const OpportunityCard = ({
   expired,
   moniker,
   assetId,
+  version,
 }: OpportunityCardProps) => {
   const history = useHistory()
   const bgHover = useColorModeValue('gray.100', 'gray.700')
@@ -88,6 +89,11 @@ export const OpportunityCard = ({
 
   if (!asset) return null
 
+  const exp = new RegExp('^' + provider, 'i')
+  if (version && !version.match(exp)) {
+    version = `${provider} ${version}`
+  }
+
   return (
     <Card onClick={handleClick} as={Link} _hover={{ textDecoration: 'none', bg: bgHover }}>
       <Card.Body>
@@ -106,7 +112,7 @@ export const OpportunityCard = ({
               <RawText size='lg' fontWeight='bold' textTransform='uppercase' lineHeight={1} mb={1}>
                 {!isCosmosChainId(chainId) &&
                   !isOsmosisChainId(chainId) &&
-                  `${asset.symbol} ${type?.replace('_', ' ')}`}
+                  `${asset.symbol} ${type?.replace('_', ' ')} (${version})`}
                 {(isCosmosChainId(chainId) || isOsmosisChainId(chainId)) && `${moniker}`}
               </RawText>
               <Amount.Crypto
